@@ -1,0 +1,133 @@
+/* should not generate diagnostics */
+
+function f(): void;
+function f(a: number, b: number): void;
+function f(a?: number, b?: number): void {}
+
+function rest(...xs: number[]): void;
+function rest(xs: number[], y: string): void;
+function rest(...args: any[]) {}
+
+class C1 {
+	constructor();
+	constructor(a: number, b: number);
+	constructor(a?: number, b?: number) {}
+
+	f(): void;
+	f(a: number, b: number): void;
+	f(a?: number, b?: number): void {}
+}
+
+// No error for arity difference greater than 1.
+interface I {
+	f(): void;
+	f(x: number, y: number): void;
+}
+
+// No error for different return types.
+interface I {
+	f(): void;
+	f(x: number): number;
+}
+
+// No error if one takes a type parameter and the other doesn't.
+interface I {
+	f<T>(x: T): T;
+	f(x: number): number;
+}
+
+// No error if one is a rest parameter and other isn't.
+interface I {
+	f(x: string): void;
+	f(...x: number[]): void;
+}
+
+// No error if both are rest parameters. (https://github.com/Microsoft/TypeScript/issues/5077)
+interface I {
+	f(...x: number[]): void;
+	f(...x: string[]): void;
+}
+
+// No error if one is optional and the other isn't.
+interface I {
+	f(x: number): void;
+	f(x?: string): void;
+}
+
+// No error if they differ by 2 or more parameters.
+interface I {
+	f(x: string, y: number): void;
+	f(x: number, y: string): void;
+}
+
+// No conflict between static/non-static members.
+declare class D {
+	static f();
+	f(x: number);
+}
+
+// Allow separate overloads if one is generic and the other isn't.
+interface Generic<T> {
+	f(): void;
+	f(x: T[]): void;
+}
+
+// Allow signatures if the type is not equal.
+interface I {
+	f(x1: number): void;
+	f(x1: boolean, x2?: number): void;
+}
+
+// AllowType parameters that are not equal
+{
+	function f<T extends number>(x: T[]): void;
+	function f<T extends string>(x: T): void;
+}
+
+{
+	// Same name, different scopes
+	declare function foo(n: number): number;
+	declare module "hello" {
+		function foo(n: number, s: string): number;
+	}
+}
+
+// children of block not checked to match TSLint
+{
+	function block(): number;
+	function block(n: number): number;
+	function block(n?: number): number {
+		return 3;
+	}
+}
+
+export interface I {
+	f(baz: string): number[];
+	f(): string[];
+}
+
+declare module "foo" {
+	export default function (foo: number): string[];
+}
+
+export default function (foo: number): string[];
+
+// https://github.com/typescript-eslint/typescript-eslint/issues/740
+function f2(key: string): Promise<string | undefined>;
+function f2(key: string, defaultValue: string): Promise<string>;
+function f2(key: string, defaultValue?: string): Promise<string | undefined> {
+	const obj: Record<string, string> = {};
+	return obj[key] || defaultValue;
+}
+
+interface I {
+	p<T>(x: T): Promise<T>;
+	p(x: number): Promise<number>;
+}
+
+function rest(...xs: number[]): Promise<number[]>;
+function rest(xs: number[], y: string): Promise<string>;
+async function rest(...args: any[], y?: string): Promise<number[] | string> {
+	return y || args;
+}
+

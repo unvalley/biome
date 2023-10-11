@@ -777,6 +777,10 @@ export interface Nursery {
 	 * Require assignment operator shorthand where possible.
 	 */
 	useShorthandAssign?: RuleConfiguration;
+	/**
+	 * Succinct description of the rule.
+	 */
+	useUnifiedTypeSignature?: RuleConfiguration;
 }
 /**
  * A list of rules that belong to this group
@@ -1351,6 +1355,7 @@ export type Category =
 	| "lint/nursery/useImportRestrictions"
 	| "lint/nursery/useIsArray"
 	| "lint/nursery/useShorthandAssign"
+	| "lint/nursery/useUnifiedTypeSignature"
 	| "lint/performance/noDelete"
 	| "lint/security/noDangerouslySetInnerHtml"
 	| "lint/security/noDangerouslySetInnerHtmlWithChildren"

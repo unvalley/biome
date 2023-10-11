@@ -2305,10 +2305,19 @@ pub struct Nursery {
     #[bpaf(long("use-shorthand-assign"), argument("on|off|warn"), optional, hide)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_shorthand_assign: Option<RuleConfiguration>,
+    #[doc = "Succinct description of the rule."]
+    #[bpaf(
+        long("use-unified-type-signature"),
+        argument("on|off|warn"),
+        optional,
+        hide
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_unified_type_signature: Option<RuleConfiguration>,
 }
 impl Nursery {
     const GROUP_NAME: &'static str = "nursery";
-    pub(crate) const GROUP_RULES: [&'static str; 23] = [
+    pub(crate) const GROUP_RULES: [&'static str; 24] = [
         "noAccumulatingSpread",
         "noApproximativeNumericConstant",
         "noConfusingVoidType",
@@ -2332,6 +2341,7 @@ impl Nursery {
         "useImportRestrictions",
         "useIsArray",
         "useShorthandAssign",
+        "useUnifiedTypeSignature",
     ];
     const RECOMMENDED_RULES: [&'static str; 12] = [
         "noDuplicateJsonKeys",
@@ -2361,7 +2371,7 @@ impl Nursery {
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[18]),
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[21]),
     ];
-    const ALL_RULES_AS_FILTERS: [RuleFilter<'static>; 23] = [
+    const ALL_RULES_AS_FILTERS: [RuleFilter<'static>; 24] = [
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[0]),
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[1]),
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[2]),
@@ -2385,6 +2395,7 @@ impl Nursery {
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[20]),
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[21]),
         RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[22]),
+        RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[23]),
     ];
     #[doc = r" Retrieves the recommended rules"]
     pub(crate) fn is_recommended(&self) -> bool {
@@ -2516,6 +2527,11 @@ impl Nursery {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[22]));
             }
         }
+        if let Some(rule) = self.use_unified_type_signature.as_ref() {
+            if rule.is_enabled() {
+                index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[23]));
+            }
+        }
         index_set
     }
     pub(crate) fn get_disabled_rules(&self) -> IndexSet<RuleFilter> {
@@ -2635,6 +2651,11 @@ impl Nursery {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[22]));
             }
         }
+        if let Some(rule) = self.use_unified_type_signature.as_ref() {
+            if rule.is_disabled() {
+                index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[23]));
+            }
+        }
         index_set
     }
     #[doc = r" Checks if, given a rule name, matches one of the rules contained in this category"]
@@ -2648,7 +2669,7 @@ impl Nursery {
     pub(crate) fn recommended_rules_as_filters() -> [RuleFilter<'static>; 12] {
         Self::RECOMMENDED_RULES_AS_FILTERS
     }
-    pub(crate) fn all_rules_as_filters() -> [RuleFilter<'static>; 23] {
+    pub(crate) fn all_rules_as_filters() -> [RuleFilter<'static>; 24] {
         Self::ALL_RULES_AS_FILTERS
     }
     #[doc = r" Select preset rules"]
@@ -2694,6 +2715,7 @@ impl Nursery {
             "useImportRestrictions" => self.use_import_restrictions.as_ref(),
             "useIsArray" => self.use_is_array.as_ref(),
             "useShorthandAssign" => self.use_shorthand_assign.as_ref(),
+            "useUnifiedTypeSignature" => self.use_unified_type_signature.as_ref(),
             _ => None,
         }
     }
