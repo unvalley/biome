@@ -1,10 +1,11 @@
-use crate::semantic_services::Semantic;
+use crate::semantic_services::{Semantic, SemanticServices};
 use biome_analyze::{context::RuleContext, declare_rule, Rule, RuleDiagnostic};
 use biome_console::markup;
 use biome_js_semantic::{Reference, ReferencesExtensions};
 use biome_js_syntax::JsIdentifierBinding;
 
 use ::serde::{Deserialize, Serialize};
+use biome_rowan::{declare_node_union, TextRange};
 use bpaf::Bpaf;
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
@@ -82,17 +83,26 @@ impl Default for RuleOptions {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct LinterTarget {
+    name: String,
+    declaration: TextRange,
+    redeclaration: TextRange,
+}
+
+// similar to no_redeclare
 impl Rule for UseUnifiedTypeSignature {
-    type Query = Semantic<JsIdentifierBinding>;
-    type State = Reference;
+    type Query = SemanticServices;
+    type State = LinterTarget;
     type Signals = Vec<Self::State>;
     type Options = RuleOptions;
 
     fn run(ctx: &RuleContext<Self>) -> Self::Signals {
-        let binding = ctx.query();
-        let options = ctx.options();
-        let model = ctx.model();
-        binding.all_references(model).collect()
+        let mut lint_targets = Vec::default();
+        for scope in ctx.query().scopes() {
+            checker(&scope, &mut lint_targets);
+        }
+        lint_targets
     }
 
     fn diagnostic(_: &RuleContext<Self>, reference: &Self::State) -> Option<RuleDiagnostic> {
@@ -110,3 +120,6 @@ impl Rule for UseUnifiedTypeSignature {
         )
     }
 }
+
+/// Returns
+fn checker(scope: &Scope, lint_targets: &mut Vec<LinterTarget>) {}
