@@ -1,14 +1,18 @@
-use crate::semantic_services::{Semantic, SemanticServices};
+use crate::semantic_services::SemanticServices;
+use ::serde::{Deserialize, Serialize};
 use biome_analyze::{context::RuleContext, declare_rule, Rule, RuleDiagnostic};
 use biome_console::markup;
-use biome_js_semantic::{Reference, ReferencesExtensions};
-use biome_js_syntax::JsIdentifierBinding;
-
-use ::serde::{Deserialize, Serialize};
-use biome_rowan::{declare_node_union, TextRange};
+use biome_js_semantic::Scope;
+use biome_js_syntax::{
+    binding_ext::{AnyJsBindingDeclaration, AnyJsIdentifierBinding},
+    AnyJsBindingPattern, AnyJsFormalParameter, AnyJsParameter, JsParameters, TsTypeAnnotation,
+};
+use biome_rowan::{AstNode, TextRange};
 use bpaf::Bpaf;
+
 #[cfg(feature = "schemars")]
 use schemars::JsonSchema;
+use std::collections::HashMap;
 
 declare_rule! {
     /// Disallow two overloads that could be unified into one with a union or an optional/rest parameter
@@ -83,33 +87,41 @@ impl Default for RuleOptions {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct LinterTarget {
-    name: String,
-    declaration: TextRange,
-    redeclaration: TextRange,
+#[derive(Debug, Clone)]
+pub(crate) struct FunctionOverload {
+    func_name: String,
+    type_signatures: Vec<(AnyJsBindingPattern, TsTypeAnnotation)>,
+    /// The range of the function parameters that can be unified
+    unifiable_params_range: TextRange,
 }
 
-// similar to no_redeclare
 impl Rule for UseUnifiedTypeSignature {
     type Query = SemanticServices;
-    type State = LinterTarget;
+    type State = FunctionOverload;
     type Signals = Vec<Self::State>;
     type Options = RuleOptions;
 
     fn run(ctx: &RuleContext<Self>) -> Self::Signals {
-        let mut lint_targets = Vec::default();
+        let mut unifiable_type_signatures = Vec::default();
+        // collects unifiable type signatures from each scope
         for scope in ctx.query().scopes() {
-            checker(&scope, &mut lint_targets);
+            check_unifiable_type_signatures(&scope, &mut unifiable_type_signatures);
         }
-        lint_targets
+        dbg!(&unifiable_type_signatures);
+        unifiable_type_signatures
     }
 
-    fn diagnostic(_: &RuleContext<Self>, reference: &Self::State) -> Option<RuleDiagnostic> {
+    fn diagnostic(_: &RuleContext<Self>, state: &Self::State) -> Option<RuleDiagnostic> {
+        let FunctionOverload {
+            func_name,
+            type_signatures,
+            unifiable_params_range: unifiable_declaration_range,
+        } = state;
+
         Some(
             RuleDiagnostic::new(
                 rule_category!(),
-                reference.range(),
+                unifiable_declaration_range,
                 markup! {
                     "These overloads can be combined into one signature."
                 },
@@ -121,5 +133,113 @@ impl Rule for UseUnifiedTypeSignature {
     }
 }
 
-/// Returns
-fn checker(scope: &Scope, lint_targets: &mut Vec<LinterTarget>) {}
+/// check for disallowing two overloads that could be unified into one with a union or an optional parameter
+/// TODO: Need to handle a lot of type signature cases
+///
+/// ref: https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/src/rules/unified-signatures.ts
+/// - typescript-eslint's behavior is not expected, because they doesn't report to implementation part of the overloads
+fn check_unifiable_type_signatures(scope: &Scope, redeclarations: &mut Vec<FunctionOverload>) {
+    // check only 1 previous function declaration
+
+    let mut declarations: HashMap<String, FunctionOverload> = HashMap::new();
+
+    for binding in scope.bindings() {
+        let AnyJsIdentifierBinding::JsIdentifierBinding(id_binding) = binding.tree() else {
+            continue;
+        };
+        let Some(binding_decl) = id_binding.declaration() else {
+            continue;
+        };
+
+        // handle typescript function only
+        let (func_name, overload) = match binding_decl {
+            AnyJsBindingDeclaration::JsFunctionDeclaration(js_func_decl) => {
+                let Some(parameters) = js_func_decl.parameters().ok() else {
+                    continue;
+                };
+                let func_name = id_binding.text();
+                let overload = FunctionOverload {
+                    func_name: func_name.clone(),
+                    unifiable_params_range: parameters.range(),
+                    type_signatures: collect_type_signatures(parameters),
+                };
+                (func_name, overload)
+            }
+            AnyJsBindingDeclaration::TsDeclareFunctionDeclaration(ts_func_decl) => {
+                let Some(parameters) = ts_func_decl.parameters().ok() else {
+                    continue;
+                };
+                let func_name = id_binding.text();
+                let overload = FunctionOverload {
+                    func_name: func_name.clone(),
+                    unifiable_params_range: parameters.range(),
+                    type_signatures: collect_type_signatures(parameters),
+                };
+                (func_name, overload)
+            }
+            _ => continue
+            // AnyJsBindingDeclaration::JsVariableDeclarator(_) => todo!(),
+            // AnyJsBindingDeclaration::JsFormalParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::JsRestParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::JsBogusParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::TsIndexSignatureParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::TsPropertyParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::TsInferType(_) => todo!(),
+            // AnyJsBindingDeclaration::TsMappedType(_) => todo!(),
+            // AnyJsBindingDeclaration::TsTypeParameter(_) => todo!(),
+            // AnyJsBindingDeclaration::JsFunctionExpression(_) => todo!(),
+            // AnyJsBindingDeclaration::JsClassDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::JsClassExpression(_) => todo!(),
+            // AnyJsBindingDeclaration::TsInterfaceDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::TsTypeAliasDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::TsEnumDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::TsModuleDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::JsImportDefaultClause(_) => todo!(),
+            // AnyJsBindingDeclaration::JsImportNamespaceClause(_) => todo!(),
+            // AnyJsBindingDeclaration::JsShorthandNamedImportSpecifier(_) => todo!(),
+            // AnyJsBindingDeclaration::JsNamedImportSpecifier(_) => todo!(),
+            // AnyJsBindingDeclaration::JsBogusNamedImportSpecifier(_) => todo!(),
+            // AnyJsBindingDeclaration::JsDefaultImportSpecifier(_) => todo!(),
+            // AnyJsBindingDeclaration::JsNamespaceImportSpecifier(_) => todo!(),
+            // AnyJsBindingDeclaration::TsImportEqualsDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::JsClassExportDefaultDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::JsFunctionExportDefaultDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::TsDeclareFunctionExportDefaultDeclaration(_) => todo!(),
+            // AnyJsBindingDeclaration::JsCatchDeclaration(_) => todo!(),
+        };
+        if let Some(overload) = declarations.get(&func_name) {
+            redeclarations.push(overload.clone())
+        } else {
+            declarations.insert(func_name.clone(), overload.clone());
+        }
+    }
+}
+
+fn collect_type_signatures(
+    parameters: JsParameters,
+) -> Vec<(AnyJsBindingPattern, TsTypeAnnotation)> {
+    let type_signatures = parameters
+        .items()
+        .into_iter()
+        .filter_map(|param| {
+            let param = param.ok()?;
+            match param {
+                AnyJsParameter::AnyJsFormalParameter(param) => match param {
+                    AnyJsFormalParameter::JsFormalParameter(param) => {
+                        let param_binding = param.binding().ok()?;
+                        let type_annotation = param.type_annotation()?;
+                        Some((param_binding, type_annotation))
+                    }
+                    AnyJsFormalParameter::JsBogusParameter(_) => None,
+                },
+                AnyJsParameter::JsRestParameter(param) => {
+                    let param_binding = param.binding().ok()?;
+                    let type_annotation = param.type_annotation()?;
+                    Some((param_binding, type_annotation))
+                }
+                AnyJsParameter::TsThisParameter(_) => None,
+            }
+        })
+        .collect::<Vec<_>>();
+    type_signatures
+}
