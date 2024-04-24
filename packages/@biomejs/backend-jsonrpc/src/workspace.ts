@@ -909,10 +909,6 @@ export interface Nursery {
 	 */
 	all?: boolean;
 	/**
-	 * Disallow Array constructors.
-	 */
-	noArrayConstructor?: RuleConfiguration_for_Null;
-	/**
 	 * WIP: This rule hasn't been implemented yet.
 	 */
 	noColorInvalidHex?: RuleConfiguration_for_Null;
@@ -988,6 +984,10 @@ export interface Nursery {
 	 * It enables the recommended rules for this group
 	 */
 	recommended?: boolean;
+	/**
+	 * Disallow Array constructors.
+	 */
+	useArrayLiterals?: RuleConfiguration_for_Null;
 	/**
 	 * Disallows package private imports.
 	 */
@@ -1956,7 +1956,7 @@ export type Category =
 	| "lint/correctness/useValidForDirection"
 	| "lint/correctness/useYield"
 	| "lint/nursery/colorNoInvalidHex"
-	| "lint/nursery/noArrayConstructor"
+	| "lint/nursery/useArrayLiterals"
 	| "lint/nursery/noColorInvalidHex"
 	| "lint/nursery/noConsole"
 	| "lint/nursery/noConstantMathMinMaxClamp"
