@@ -1563,14 +1563,15 @@
 					"description": "It enables the recommended rules for this group",
 					"type": ["boolean", "null"]
 				},
-<<<<<<< HEAD
 				"useArrayLiterals": {
 					"description": "Disallow Array constructors.",
-||||||| 7ea5dffd64
-=======
+					"anyOf": [
+						{ "$ref": "#/definitions/RuleConfiguration" },
+						{ "type": "null" }
+					]
+				},
 				"useConsistentNewBuiltin": {
 					"description": "Enforce the use of new for all builtins, except String, Number, Boolean, Symbol and BigInt.",
->>>>>>> main
 					"anyOf": [
 						{ "$ref": "#/definitions/RuleConfiguration" },
 						{ "type": "null" }

@@ -985,16 +985,13 @@ export interface Nursery {
 	 */
 	recommended?: boolean;
 	/**
-<<<<<<< HEAD
 	 * Disallow Array constructors.
 	 */
 	useArrayLiterals?: RuleConfiguration_for_Null;
-||||||| 7ea5dffd64
-=======
+	/**
 	 * Enforce the use of new for all builtins, except String, Number, Boolean, Symbol and BigInt.
 	 */
 	useConsistentNewBuiltin?: RuleConfiguration_for_Null;
->>>>>>> main
 	/**
 	 * Disallows package private imports.
 	 */
