@@ -2705,6 +2705,9 @@ pub struct Nursery {
     #[doc = "Disallow Array constructors."]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_array_literals: Option<RuleConfiguration<UseArrayLiterals>>,
+    #[doc = "Enforce the use of new for all builtins, except String, Number, Boolean, Symbol and BigInt."]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub use_consistent_new_builtin: Option<RuleConfiguration<UseConsistentNewBuiltin>>,
     #[doc = "Disallows package private imports."]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_import_restrictions: Option<RuleConfiguration<UseImportRestrictions>>,
@@ -2748,6 +2751,7 @@ impl Nursery {
         "noUndeclaredDependencies",
         "noUnknownUnit",
         "useArrayLiterals",
+        "useConsistentNewBuiltin",
         "useImportRestrictions",
         "useSortedClasses",
     ];
@@ -2908,14 +2912,19 @@ impl Nursery {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[18]));
             }
         }
-        if let Some(rule) = self.use_import_restrictions.as_ref() {
+        if let Some(rule) = self.use_consistent_new_builtin.as_ref() {
             if rule.is_enabled() {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[19]));
             }
         }
-        if let Some(rule) = self.use_sorted_classes.as_ref() {
+        if let Some(rule) = self.use_import_restrictions.as_ref() {
             if rule.is_enabled() {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[20]));
+            }
+        }
+        if let Some(rule) = self.use_sorted_classes.as_ref() {
+            if rule.is_enabled() {
+                index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[21]));
             }
         }
         index_set
@@ -3017,14 +3026,19 @@ impl Nursery {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[18]));
             }
         }
-        if let Some(rule) = self.use_import_restrictions.as_ref() {
+        if let Some(rule) = self.use_consistent_new_builtin.as_ref() {
             if rule.is_disabled() {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[19]));
             }
         }
-        if let Some(rule) = self.use_sorted_classes.as_ref() {
+        if let Some(rule) = self.use_import_restrictions.as_ref() {
             if rule.is_disabled() {
                 index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[20]));
+            }
+        }
+        if let Some(rule) = self.use_sorted_classes.as_ref() {
+            if rule.is_disabled() {
+                index_set.insert(RuleFilter::Rule(Self::GROUP_NAME, Self::GROUP_RULES[21]));
             }
         }
         index_set
@@ -3137,6 +3151,10 @@ impl Nursery {
                 .map(|conf| (conf.level(), conf.get_options())),
             "useArrayLiterals" => self
                 .use_array_literals
+                .as_ref()
+                .map(|conf| (conf.level(), conf.get_options())),
+            "useConsistentNewBuiltin" => self
+                .use_consistent_new_builtin
                 .as_ref()
                 .map(|conf| (conf.level(), conf.get_options())),
             "useImportRestrictions" => self
@@ -3556,7 +3574,7 @@ pub struct Style {
     #[doc = "Require consistently using either T\\[] or Array\\<T>"]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_consistent_array_type: Option<RuleConfiguration<UseConsistentArrayType>>,
-    #[doc = "Require const declarations for variables that are never reassigned after declared."]
+    #[doc = "Require const declarations for variables that are only assigned once."]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub use_const: Option<RuleConfiguration<UseConst>>,
     #[doc = "Enforce default function parameters and optional function parameters to be last."]
