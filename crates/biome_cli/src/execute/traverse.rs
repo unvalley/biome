@@ -17,7 +17,6 @@ use crossbeam::channel::{unbounded, Receiver, Sender};
 use rustc_hash::FxHashSet;
 use std::sync::atomic::AtomicU32;
 use std::{
-    env::current_dir,
     ffi::OsString,
     panic::catch_unwind,
     path::{Path, PathBuf},
@@ -45,10 +44,7 @@ pub(crate) fn traverse(
             | TraversalMode::CI { .. } => {
                 // If `--staged` or `--changed` is specified, it's acceptable for them to be empty, so ignore it.
                 if !execution.is_vcs_targeted() {
-                    match current_dir() {
-                        Ok(current_dir) => inputs.push(current_dir.into_os_string()),
-                        Err(err) => return Err(CliDiagnostic::io_error(err)),
-                    }
+                    inputs.push(OsString::from("."))
                 }
             }
             _ => {
