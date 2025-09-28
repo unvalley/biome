@@ -239,8 +239,10 @@ fn is_on_initializer(a: &Binding, b: &Binding) -> bool {
 /// const c;
 /// ```
 fn is_declaration(binding: &Binding) -> bool {
-    binding.tree().parent::<JsVariableDeclarator>().is_some()
-        || binding.tree().parent::<TsTypeAliasDeclaration>().is_some()
+    binding.syntax().ancestors().any(|ancestor| {
+        JsVariableDeclarator::can_cast(ancestor.kind())
+            || TsTypeAliasDeclaration::can_cast(ancestor.kind())
+    })
 }
 
 fn is_inside_type_parameter(binding: &Binding) -> bool {
